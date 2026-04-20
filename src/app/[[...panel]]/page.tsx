@@ -34,6 +34,7 @@ import { LocalAgentsDocPanel } from '@/components/panels/local-agents-doc-panel'
 import { ChannelsPanel } from '@/components/panels/channels-panel'
 import { DebugPanel } from '@/components/panels/debug-panel'
 import { SecurityAuditPanel } from '@/components/panels/security-audit-panel'
+import { NotesPanel } from '@/components/panels/notes-panel'
 import { NodesPanel } from '@/components/panels/nodes-panel'
 import { ExecApprovalPanel } from '@/components/panels/exec-approval-panel'
 import { SystemMonitorPanel } from '@/components/panels/system-monitor-panel'
@@ -550,6 +551,8 @@ function ContentRouter({ tab }: { tab: string }) {
       return <CronManagementPanel />
     case 'memory':
       return <MemoryBrowserPanel />
+    case 'notes':
+      return <NotesPanel />
     case 'cost-tracker':
     case 'tokens':
     case 'agent-costs':

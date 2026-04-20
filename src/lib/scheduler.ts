@@ -12,6 +12,9 @@ import { syncSkillsFromDisk } from './skill-sync'
 import { syncLocalAgents } from './local-agent-sync'
 import { dispatchAssignedTasks, runAegisReviews, requeueStaleTasks, autoRouteInboxTasks } from './task-dispatch'
 import { spawnRecurringTasks } from './recurring-tasks'
+import { runSearchIndexer } from './search-indexer'
+import { runSecurityCouncil } from './security-council'
+import { runHealthCouncil } from './health-council'
 
 const BACKUP_DIR = join(dirname(config.dbPath), 'backups')
 
@@ -272,6 +275,7 @@ async function syncAgentLiveStatuses(): Promise<number> {
 }
 
 const DAILY_MS = 24 * 60 * 60 * 1000
+const WEEKLY_MS = 7 * DAILY_MS
 const FIVE_MINUTES_MS = 5 * 60 * 1000
 const TICK_MS = 60 * 1000 // Check every minute
 
@@ -398,6 +402,36 @@ export function initScheduler() {
     running: false,
   })
 
+  // Search indexer: every 10 minutes
+  tasks.set('search_index', {
+    name: 'Search Indexer',
+    intervalMs: 10 * 60 * 1000,
+    lastRun: null,
+    nextRun: now + 30_000, // First run 30s after startup
+    enabled: true,
+    running: false,
+  })
+
+  // Security Council: nightly at 3:30am UTC
+  tasks.set('security_council', {
+    name: 'Security Council',
+    intervalMs: DAILY_MS,
+    lastRun: null,
+    nextRun: now + getNextDailyMsWithMinutes(3, 30),
+    enabled: true,
+    running: false,
+  })
+
+  // Health Council: weekly Sunday at 6am UTC
+  tasks.set('health_council', {
+    name: 'Platform Health Council',
+    intervalMs: WEEKLY_MS,
+    lastRun: null,
+    nextRun: now + getNextSunday6amMs(),
+    enabled: true,
+    running: false,
+  })
+
   // Start the tick loop
   tickInterval = setInterval(tick, TICK_MS)
   logger.info('Scheduler initialized - backup at ~3AM, cleanup at ~4AM, heartbeat every 5m, webhook/claude/skill/local-agent/gateway-agent sync every 60s')
@@ -410,6 +444,34 @@ function getNextDailyMs(hour: number): number {
   next.setUTCHours(hour, 0, 0, 0)
   if (next.getTime() <= now.getTime()) {
     next.setUTCDate(next.getUTCDate() + 1)
+  }
+  return next.getTime() - now.getTime()
+}
+
+/** Calculate ms until next occurrence of a given hour:minute (UTC) */
+function getNextDailyMsWithMinutes(hour: number, minute: number): number {
+  const now = new Date()
+  const next = new Date(now)
+  next.setUTCHours(hour, minute, 0, 0)
+  if (next.getTime() <= now.getTime()) {
+    next.setUTCDate(next.getUTCDate() + 1)
+  }
+  return next.getTime() - now.getTime()
+}
+
+/** Calculate ms until next Sunday at 6am UTC */
+function getNextSunday6amMs(): number {
+  const now = new Date()
+  const next = new Date(now)
+  next.setUTCHours(6, 0, 0, 0)
+  // getUTCDay: 0=Sun, 1=Mon, ..., 6=Sat
+  // daysUntilNextSunday: how many days to add to reach the next Sunday
+  const currentDay = next.getUTCDay()
+  const daysUntilSunday = currentDay === 0 ? 7 : (7 - currentDay)
+  next.setUTCDate(next.getUTCDate() + daysUntilSunday)
+  if (next.getTime() <= now.getTime()) {
+    // Edge case: today is Sunday and it's already past 6am, go to next Sunday
+    next.setUTCDate(next.getUTCDate() + 7)
   }
   return next.getTime() - now.getTime()
 }
@@ -433,8 +495,11 @@ async function tick() {
       : id === 'aegis_review' ? 'general.aegis_review'
       : id === 'recurring_task_spawn' ? 'general.recurring_task_spawn'
       : id === 'stale_task_requeue' ? 'general.stale_task_requeue'
+      : id === 'search_index' ? 'search.indexer'
+      : id === 'security_council' ? 'council.security'
+      : id === 'health_council' ? 'council.health'
       : 'general.agent_heartbeat'
-    const defaultEnabled = id === 'agent_heartbeat' || id === 'webhook_retry' || id === 'claude_session_scan' || id === 'skill_sync' || id === 'local_agent_sync' || id === 'gateway_agent_sync' || id === 'task_dispatch' || id === 'aegis_review' || id === 'recurring_task_spawn' || id === 'stale_task_requeue'
+    const defaultEnabled = id === 'agent_heartbeat' || id === 'webhook_retry' || id === 'claude_session_scan' || id === 'skill_sync' || id === 'local_agent_sync' || id === 'gateway_agent_sync' || id === 'task_dispatch' || id === 'aegis_review' || id === 'recurring_task_spawn' || id === 'stale_task_requeue' || id === 'search_index' || id === 'security_council' || id === 'health_council'
     if (!isSettingEnabled(settingKey, defaultEnabled)) continue
 
     task.running = true
@@ -457,6 +522,9 @@ async function tick() {
         : id === 'aegis_review' ? await runAegisReviews()
         : id === 'recurring_task_spawn' ? await spawnRecurringTasks()
         : id === 'stale_task_requeue' ? await requeueStaleTasks()
+        : id === 'search_index' ? await runSearchIndexer()
+        : id === 'security_council' ? await runSecurityCouncil()
+        : id === 'health_council' ? await runHealthCouncil()
         : await runCleanup()
       task.lastResult = { ...result, timestamp: now }
     } catch (err: any) {
@@ -493,8 +561,11 @@ export function getSchedulerStatus() {
       : id === 'aegis_review' ? 'general.aegis_review'
       : id === 'recurring_task_spawn' ? 'general.recurring_task_spawn'
       : id === 'stale_task_requeue' ? 'general.stale_task_requeue'
+      : id === 'search_index' ? 'search.indexer'
+      : id === 'security_council' ? 'council.security'
+      : id === 'health_council' ? 'council.health'
       : 'general.agent_heartbeat'
-    const defaultEnabled = id === 'agent_heartbeat' || id === 'webhook_retry' || id === 'claude_session_scan' || id === 'skill_sync' || id === 'local_agent_sync' || id === 'gateway_agent_sync' || id === 'task_dispatch' || id === 'aegis_review' || id === 'recurring_task_spawn' || id === 'stale_task_requeue'
+    const defaultEnabled = id === 'agent_heartbeat' || id === 'webhook_retry' || id === 'claude_session_scan' || id === 'skill_sync' || id === 'local_agent_sync' || id === 'gateway_agent_sync' || id === 'task_dispatch' || id === 'aegis_review' || id === 'recurring_task_spawn' || id === 'stale_task_requeue' || id === 'search_index' || id === 'security_council' || id === 'health_council'
     result.push({
       id,
       name: task.name,
@@ -523,6 +594,9 @@ export async function triggerTask(taskId: string): Promise<{ ok: boolean; messag
   if (taskId === 'aegis_review') return runAegisReviews()
   if (taskId === 'recurring_task_spawn') return spawnRecurringTasks()
   if (taskId === 'stale_task_requeue') return requeueStaleTasks()
+  if (taskId === 'search_index') return runSearchIndexer()
+  if (taskId === 'security_council') return runSecurityCouncil()
+  if (taskId === 'health_council') return runHealthCouncil()
   return { ok: false, message: `Unknown task: ${taskId}` }
 }
 

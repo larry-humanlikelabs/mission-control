@@ -135,6 +135,7 @@ CREATE INDEX IF NOT EXISTS idx_notes_status ON notes(status);
 CREATE INDEX IF NOT EXISTS idx_notes_captured_at ON notes(captured_at);
 CREATE INDEX IF NOT EXISTS idx_notes_source ON notes(source);
 CREATE INDEX IF NOT EXISTS idx_notes_project_id ON notes(project_id);
+CREATE INDEX IF NOT EXISTS idx_notes_workspace_id ON notes(workspace_id);
 
 -- Notes table — fast-capture second brain
 CREATE TABLE IF NOT EXISTS notes (
@@ -143,6 +144,7 @@ CREATE TABLE IF NOT EXISTS notes (
     captured_at INTEGER NOT NULL DEFAULT (unixepoch()),
     source TEXT NOT NULL DEFAULT 'api', -- web, telegram, voice, felix, api
     project_id INTEGER,
+    workspace_id INTEGER NOT NULL DEFAULT 1,
     tags TEXT, -- JSON array of auto-inferred tags
     promoted_to TEXT, -- JSON: {type, target_id} if promoted to task/memory/etc
     status TEXT NOT NULL DEFAULT 'raw', -- raw, triaged, promoted, archived

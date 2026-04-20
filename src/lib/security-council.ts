@@ -348,7 +348,7 @@ function runOperationalRealismLens(): Finding[] {
         severity: 'low',
         cvss: 2.5,
         title: 'Multiple agents without explicit auth config',
-        description: `${agents_withoutAuth.cnt} agents lack explicit auth configuration. This may be intentional for local-only agents, but verify.`,
+        description: `${agentsWithoutAuth.cnt} agents lack explicit auth configuration. This may be intentional for local-only agents, but verify.`,
         recommendation: 'For each agent, confirm it is intentionally unauthenticated and confined to loopback access.',
         new_vs_recurring: 'recurring',
       })

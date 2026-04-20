@@ -33,7 +33,8 @@ const QUICK_NAV_COMMANDS: Array<{ panel: string; titleKey: string; title: string
   { panel: 'notifications', titleKey: 'goToNotifications', title: 'Go to Notifications', aliases: ['alerts inbox'] },
   { panel: 'tokens', titleKey: 'goToTokenUsage', title: 'Go to Token Usage', aliases: ['cost', 'spend'] },
   { panel: 'logs', titleKey: 'goToLogs', title: 'Go to Logs', aliases: ['log viewer'] },
-  { panel: 'memory', titleKey: 'goToMemoryBrowser', title: 'Go to Memory Browser', aliases: ['knowledge', 'notes'] },
+  { panel: 'memory', titleKey: 'goToMemoryBrowser', title: 'Go to Memory Browser', aliases: ['knowledge'] },
+  { panel: 'notes', titleKey: 'goToNotes', title: 'Go to Notes', aliases: ['second brain', 'capture', 'quick note'] },
   { panel: 'integrations', titleKey: 'goToIntegrations', title: 'Go to Integrations', aliases: ['providers', 'api keys'] },
   { panel: 'settings', titleKey: 'goToSettings', title: 'Go to Settings', aliases: ['preferences', 'config'] },
   { panel: 'gateways', titleKey: 'goToGateways', title: 'Go to Gateways', aliases: ['gateway manager'] },
@@ -210,11 +211,16 @@ export function HeaderBar() {
         e.preventDefault()
         openCommandPalette()
       }
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'N') {
+        e.preventDefault()
+        prefetchPanel('notes')
+        navigateToPanel('notes')
+      }
       if (e.key === 'Escape') setSearchOpen(false)
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [handleResultClick, openCommandPalette, searchOpen, searchResults, selectedIndex])
+  }, [handleResultClick, openCommandPalette, searchOpen, searchResults, selectedIndex, navigateToPanel, prefetchPanel])
 
   // Close on outside click
   useEffect(() => {
