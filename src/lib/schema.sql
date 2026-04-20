@@ -152,3 +152,62 @@ CREATE TABLE IF NOT EXISTS notes (
 );
 
 -- Sample data intentionally omitted - seed in dev scripts if needed.
+
+-- Content Spy Tables
+CREATE TABLE IF NOT EXISTS spy_targets (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  platform TEXT NOT NULL CHECK(platform IN ('youtube', 'x', 'tiktok', 'linkedin', 'reddit')),
+  username TEXT,
+  keywords TEXT DEFAULT '[]',
+  status TEXT DEFAULT 'active' CHECK(status IN ('active', 'paused', 'disabled')),
+  created_at INTEGER,
+  updated_at INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS spy_posts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  target_id INTEGER REFERENCES spy_targets(id),
+  platform TEXT NOT NULL,
+  external_id TEXT,
+  url TEXT,
+  author TEXT,
+  text_content TEXT,
+  engagement_metrics TEXT DEFAULT '{}',
+  captured_at INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS spy_insights (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  type TEXT NOT NULL CHECK(type IN ('daily_digest', 'weekly_report', 'trend_alert')),
+  content TEXT,
+  created_at INTEGER
+);
+
+-- Distribution Queue Tables
+CREATE TABLE IF NOT EXISTS distribution_items (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  linked_doc_id INTEGER,
+  platform TEXT NOT NULL CHECK(platform IN ('x', 'linkedin', 'youtube', 'instagram', 'threads', 'newsletter')),
+  content_body TEXT,
+  media_paths TEXT DEFAULT '[]',
+  scheduled_for INTEGER,
+  status TEXT DEFAULT 'draft' CHECK(status IN ('draft', 'queued', 'approved', 'posted', 'failed', 'cancelled')),
+  posted_url TEXT,
+  error_message TEXT,
+  created_at INTEGER,
+  updated_at INTEGER
+);
+
+-- Notes Table
+CREATE TABLE IF NOT EXISTS notes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  content TEXT NOT NULL,
+  source TEXT DEFAULT 'dashboard',
+  project_id INTEGER,
+  tags TEXT DEFAULT '[]',
+  promoted_to TEXT DEFAULT '{}',
+  status TEXT DEFAULT 'raw' CHECK(status IN ('raw', 'triaged', 'promoted', 'archived')),
+  created_at INTEGER,
+  updated_at INTEGER
+);
