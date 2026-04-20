@@ -211,3 +211,34 @@ CREATE TABLE IF NOT EXISTS notes (
   created_at INTEGER,
   updated_at INTEGER
 );
+
+-- Ideas / Ideation Engine
+CREATE TABLE IF NOT EXISTS idea_archive (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  topic TEXT,
+  hook TEXT,
+  angle TEXT,
+  format TEXT DEFAULT 'long-form',
+  source TEXT DEFAULT 'felix' CHECK(source IN ('user', 'spy', 'felix', 'council')),
+  confidence_tier TEXT CHECK(confidence_tier IN ('a', 'b', 'c')),
+  status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'approved', 'rejected', 'produced')),
+  produced_as TEXT,
+  notes TEXT,
+  created_at INTEGER,
+  updated_at INTEGER
+);
+
+-- Image Generations
+CREATE TABLE IF NOT EXISTS generations (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  prompt TEXT NOT NULL,
+  model TEXT DEFAULT 'gemini-3.1-flash-image-preview',
+  resolution TEXT DEFAULT '1K',
+  cost_usd REAL DEFAULT 0,
+  status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'generating', 'done', 'failed')),
+  output_path TEXT,
+  parent_generation_id INTEGER,
+  linked_task_id INTEGER,
+  saved_to_brand INTEGER DEFAULT 0,
+  created_at INTEGER
+);
