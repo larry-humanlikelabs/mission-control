@@ -381,6 +381,137 @@ function DunkItButton({ taskId, onDunked }: { taskId: number; onDunked: (id: num
   )
 }
 
+// ─── Telegram helper ──────────────────────────────────────────────────────────
+const TELEGRAM_BOT_TOKEN = '8537161005:AAH_VCyGZxaDWTAooTsa_wQPSbg0CSv-vmQ'
+const MISSION_CONTROL_CHAT_ID = '5280832041'
+
+async function notifyReviewReady(taskId: number, taskTitle: string): Promise<void> {
+  try {
+    const message = `📋 Task ready for review: ${taskTitle}`
+    await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: MISSION_CONTROL_CHAT_ID, text: message, parse_mode: 'HTML' }),
+    })
+    log.info('Telegram review notification sent', { taskId })
+  } catch (err) {
+    log.warn('Failed to send Telegram review notification', { err, taskId })
+  }
+}
+
+// ─── Review Action Bar ─────────────────────────────────────────────────────────
+type ReviewAction = 'idle' | 'approving' | 'rejecting' | 'success' | 'error'
+
+function ReviewActionBar({ taskId, taskTitle, onAction }: { taskId: number; taskTitle: string; onAction: () => void }) {
+  const [action, setAction] = useState<ReviewAction>('idle')
+  const [feedback, setFeedback] = useState('')
+  const [showFeedback, setShowFeedback] = useState(false)
+
+  const handleApprove = async () => {
+    if (action !== 'idle') return
+    setAction('approving')
+    try {
+      const res = await fetch(`/api/tasks/${taskId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'done' }),
+      })
+      if (!res.ok) throw new Error('Failed to approve')
+      setAction('success')
+      setTimeout(() => onAction(), 600)
+    } catch {
+      setAction('error')
+      setTimeout(() => setAction('idle'), 1500)
+    }
+  }
+
+  const handleReject = () => {
+    if (action !== 'idle') return
+    setShowFeedback(true)
+  }
+
+  const confirmReject = async () => {
+    if (!feedback.trim()) return
+    setAction('rejecting')
+    try {
+      // Add feedback as a comment on the task
+      await fetch(`/api/tasks/${taskId}/comments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ author: 'felix', content: `🔁 Rejected — ${feedback.trim()}` }),
+      })
+      // Move back to inbox
+      const res = await fetch(`/api/tasks/${taskId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'inbox' }),
+      })
+      if (!res.ok) throw new Error('Failed to reject')
+      setAction('success')
+      setShowFeedback(false)
+      setTimeout(() => onAction(), 600)
+    } catch {
+      setAction('error')
+      setTimeout(() => setAction('idle'), 1500)
+    }
+  }
+
+  if (showFeedback) {
+    return (
+      <div className="mt-2 ml-5.5 flex flex-col gap-1.5" onClick={(e) => e.stopPropagation()}>
+        <textarea
+          value={feedback}
+          onChange={(e) => setFeedback(e.target.value)}
+          placeholder="What needs to change? (required)"
+          rows={2}
+          className="w-full text-xs bg-surface-1 border border-amber-500/30 rounded px-2 py-1.5 text-foreground placeholder-muted-foreground resize-none focus:outline-none focus:ring-1 focus:ring-amber-500/50"
+          autoFocus
+        />
+        <div className="flex gap-1.5">
+          <button
+            onClick={confirmReject}
+            disabled={!feedback.trim() || action === 'rejecting'}
+            className="flex-1 text-xs px-2 py-1 rounded bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30 disabled:opacity-50 transition-colors"
+          >
+            {action === 'rejecting' ? 'Rejecting…' : 'Confirm Reject'}
+          </button>
+          <button
+            onClick={() => { setShowFeedback(false); setFeedback('') }}
+            className="text-xs px-2 py-1 rounded bg-secondary text-muted-foreground border border-border hover:text-foreground transition-colors"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="mt-2 ml-5.5 flex gap-1.5" onClick={(e) => e.stopPropagation()}>
+      <button
+        onClick={handleApprove}
+        disabled={action !== 'idle'}
+        title="Approve — move to Done"
+        className={`flex-1 text-xs px-2 py-1 rounded font-medium border transition-all ${
+          action === 'success' ? 'bg-green-500/20 text-green-400 border-green-500/30' :
+          action === 'error' ? 'bg-red-500/20 text-red-400 border-red-500/30' :
+          'bg-emerald-500/20 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/30'
+        } disabled:opacity-50`}
+      >
+        {action === 'success' ? '✓ Approved!' : action === 'approving' ? 'Approving…' : '✓ Approve'}
+      </button>
+      <button
+        onClick={handleReject}
+        disabled={action !== 'idle'}
+        title="Reject — return to Inbox with feedback"
+        className="flex-1 text-xs px-2 py-1 rounded font-medium border bg-orange-500/20 text-orange-400 border-orange-500/30 hover:bg-orange-500/30 transition-colors disabled:opacity-50"
+      >
+        Reject
+      </button>
+    </div>
+  )
+}
+
 interface SpawnFormData {
   task: string
   model: string
@@ -633,6 +764,11 @@ export function TaskBoardPanel() {
       if (!response.ok) {
         const data = await response.json().catch(() => ({}))
         throw new Error(data.error || 'Failed to update task status')
+      }
+
+      // Telegram notification when card enters Review
+      if (newStatus === 'review') {
+        notifyReviewReady(draggedTask.id, draggedTask.title)
       }
     } catch (err) {
       // Revert optimistic update via Zustand store
@@ -1122,6 +1258,11 @@ export function TaskBoardPanel() {
                         {task.due_date * 1000 < Date.now() ? '! ' : ''}{t('due')} {formatTaskTimestamp(task.due_date)}
                       </span>
                     </div>
+                  )}
+
+                  {/* Review column action bar */}
+                  {task.status === 'review' && (
+                    <ReviewActionBar taskId={task.id} taskTitle={task.title} onAction={() => fetchData()} />
                   )}
                 </div>
               ))}
