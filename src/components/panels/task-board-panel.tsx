@@ -411,12 +411,14 @@ function ReviewActionBar({ taskId, taskTitle, onAction }: { taskId: number; task
     if (action !== 'idle') return
     setAction('approving')
     try {
+      // Move to done
       const res = await fetch(`/api/tasks/${taskId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'done' }),
       })
       if (!res.ok) throw new Error('Failed to approve')
+
       setAction('success')
       setTimeout(() => onAction(), 600)
     } catch {
