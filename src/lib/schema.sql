@@ -242,3 +242,28 @@ CREATE TABLE IF NOT EXISTS generations (
   saved_to_brand INTEGER DEFAULT 0,
   created_at INTEGER
 );
+
+-- Council Runs
+CREATE TABLE IF NOT EXISTS council_runs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  date TEXT,
+  findings TEXT DEFAULT '[]',
+  agents_run TEXT DEFAULT '[]',
+  duration_ms INTEGER,
+  timestamp INTEGER
+);
+
+-- Documents (for Docs module)
+CREATE TABLE IF NOT EXISTS documents (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  file_path TEXT NOT NULL,
+  title TEXT,
+  kind TEXT DEFAULT 'other',
+  project_id INTEGER,
+  created_by TEXT,
+  size_bytes INTEGER,
+  preview_generated INTEGER DEFAULT 0,
+  thumbnail_path TEXT,
+  tags TEXT DEFAULT '[]',
+  created_at INTEGER
+);
