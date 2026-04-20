@@ -131,5 +131,22 @@ CREATE INDEX IF NOT EXISTS idx_quality_reviews_task_id ON quality_reviews(task_i
 CREATE INDEX IF NOT EXISTS idx_quality_reviews_reviewer ON quality_reviews(reviewer);
 CREATE INDEX IF NOT EXISTS idx_gateway_health_logs_gateway_id ON gateway_health_logs(gateway_id);
 CREATE INDEX IF NOT EXISTS idx_gateway_health_logs_probed_at ON gateway_health_logs(probed_at);
+CREATE INDEX IF NOT EXISTS idx_notes_status ON notes(status);
+CREATE INDEX IF NOT EXISTS idx_notes_captured_at ON notes(captured_at);
+CREATE INDEX IF NOT EXISTS idx_notes_source ON notes(source);
+CREATE INDEX IF NOT EXISTS idx_notes_project_id ON notes(project_id);
+
+-- Notes table — fast-capture second brain
+CREATE TABLE IF NOT EXISTS notes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    content TEXT NOT NULL,
+    captured_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    source TEXT NOT NULL DEFAULT 'api', -- web, telegram, voice, felix, api
+    project_id INTEGER,
+    tags TEXT, -- JSON array of auto-inferred tags
+    promoted_to TEXT, -- JSON: {type, target_id} if promoted to task/memory/etc
+    status TEXT NOT NULL DEFAULT 'raw', -- raw, triaged, promoted, archived
+    created_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
 
 -- Sample data intentionally omitted - seed in dev scripts if needed.

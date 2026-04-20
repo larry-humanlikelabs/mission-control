@@ -1428,6 +1428,60 @@ const migrations: Migration[] = [
       db.exec(`ALTER TABLE mcp_call_log ADD COLUMN signature TEXT DEFAULT NULL`)
       db.exec(`ALTER TABLE mcp_call_log ADD COLUMN public_key TEXT DEFAULT NULL`)
     }
+  },
+  {
+    id: '051_search_index',
+    up(db: Database.Database) {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS search_index (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          content TEXT NOT NULL,
+          source_type TEXT NOT NULL,
+          source_path TEXT NOT NULL,
+          chunk_index INTEGER NOT NULL DEFAULT 0,
+          embedding BLOB,
+          content_hash TEXT NOT NULL,
+          indexed_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          created_at INTEGER NOT NULL DEFAULT (unixepoch())
+        )
+      `)
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_search_source_type ON search_index(source_type)`)
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_search_source_path ON search_index(source_path)`)
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_search_content_hash ON search_index(content_hash)`)
+
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS search_index_meta (
+          key TEXT PRIMARY KEY,
+          value TEXT
+        )
+      `)
+
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS security_audit_log (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          run_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          findings_json TEXT NOT NULL,
+          summary_json TEXT NOT NULL,
+          critical_count INTEGER NOT NULL DEFAULT 0,
+          high_count INTEGER NOT NULL DEFAULT 0,
+          medium_count INTEGER NOT NULL DEFAULT 0,
+          low_count INTEGER NOT NULL DEFAULT 0
+        )
+      `)
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_security_audit_run_at ON security_audit_log(run_at)`)
+
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS health_audit_log (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          run_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          findings_json TEXT NOT NULL,
+          healthy_count INTEGER NOT NULL DEFAULT 0,
+          warning_count INTEGER NOT NULL DEFAULT 0,
+          critical_count INTEGER NOT NULL DEFAULT 0
+        )
+      `)
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_health_audit_run_at ON health_audit_log(run_at)`)
+    }
   }
 ]
 

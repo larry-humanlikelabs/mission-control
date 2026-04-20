@@ -95,7 +95,7 @@ const STATUS_COLUMN_KEYS = [
   { key: 'assigned', titleKey: 'colAssigned', color: 'bg-blue-500/20 text-blue-400' },
   { key: 'awaiting_owner', titleKey: 'colAwaitingOwner', color: 'bg-orange-500/20 text-orange-400' },
   { key: 'in_progress', titleKey: 'colInProgress', color: 'bg-yellow-500/20 text-yellow-400' },
-  { key: 'review', titleKey: 'colReview', color: 'bg-purple-500/20 text-purple-400' },
+  { key: 'review', titleKey: 'colReview', color: 'bg-amber-500/20 text-amber-400' },
   { key: 'quality_review', titleKey: 'colQualityReview', color: 'bg-indigo-500/20 text-indigo-400' },
   { key: 'done', titleKey: 'colDone', color: 'bg-green-500/20 text-green-400' },
   { key: 'failed', titleKey: 'colFailed', color: 'bg-red-500/20 text-red-400' },
@@ -937,7 +937,11 @@ export function TaskBoardPanel() {
             key={column.key}
             role="region"
             aria-label={t('columnAriaLabel', { title: column.title, count: tasksByStatus[column.key]?.length || 0 })}
-            className="flex-1 min-w-80 min-h-0 bg-surface-0 border border-border/60 rounded-xl flex flex-col transition-colors duration-200 [&.drag-over]:border-primary/40 [&.drag-over]:bg-primary/[0.02]"
+            className={`flex-1 min-w-80 min-h-0 bg-surface-0 border rounded-xl flex flex-col transition-colors duration-200 [&.drag-over]:border-primary/40 [&.drag-over]:bg-primary/[0.02] ${
+              column.key === 'review'
+                ? 'border-amber-500/50 bg-amber-500/[0.03]'
+                : 'border-border/60'
+            }`}
             onDragEnter={(e) => handleDragEnter(e, column.key)}
             onDragLeave={handleDragLeave}
             onDragOver={handleDragOver}

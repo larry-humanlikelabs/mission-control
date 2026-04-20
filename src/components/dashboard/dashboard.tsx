@@ -8,6 +8,7 @@ import { SignalPill, getLocalOsStatus, getProviderHealth, getMcHealth } from './
 import { OnboardingChecklistWidget } from './widgets/onboarding-checklist-widget'
 import { EmptyStateLaunchpad } from './empty-state-launchpad'
 import { WidgetGrid } from './widget-grid'
+import { QuickCapture } from './quick-capture-widget'
 import type { DbStats, ClaudeStats, LogLike, DashboardData } from './widget-primitives'
 
 export function Dashboard() {
@@ -270,6 +271,7 @@ export function Dashboard() {
         onNavigate={navigateToPanel}
       />
       <WidgetGrid data={dashboardData} />
+      <QuickCapture />
     </div>
   )
 }
